@@ -16,40 +16,49 @@
     <h1>Select and Load PDF from Google Drive</h1>
     <button id="pickFileButton">Pick a File from Google Drive</button>
     <iframe id="pdfContainer" style="display: none;"></iframe>
-    <!-- Load the Google APIs script -->
+
+    <!-- Load the Google Identity Services script -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script type="text/javascript" src="https://apis.google.com/js/api.js"></script>
+
     <script type="text/javascript">
         let developerKey = 'AIzaSyDFUxsEL712HqegPC0wM5_2l5-Vn_hYlCY'; // Replace with your actual API key
         let clientId = '506514985442-o0n03vb34h9s0ga33isoqo7tllcrgojg.apps.googleusercontent.com'; // OAuth Client ID 
-        let  scope = 'https://www.googleapis.com/auth/drive.file'; // Updated scope
+        let scope = 'https://www.googleapis.com/auth/drive.file';
         let pickerApiLoaded = false;
-        let oauthToken;
+        let tokenClient;
+
         // Load the Google APIs
         function loadApis() {
-            gapi.load('client:auth2', initClient);  // Load client and auth2
-            gapi.load('picker', onPickerApiLoad);   // Load picker API
+            gapi.load('client', initClient);  // Load Google Drive API
+            gapi.load('picker', onPickerApiLoad);   // Load Picker API
         }
+
         // Initialize the Google API client
         function initClient() {
             gapi.client.init({
-                apiKey: developerKey,
-                clientId: clientId,
-                scope: scope
+                apiKey: developerKey
             }).then(() => {
-                gapi.auth2.getAuthInstance().signIn().then(() => {
-                    oauthToken = gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token;
-                    createPicker();
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: clientId,
+                    scope: scope,
+                    callback: (tokenResponse) => {
+                        createPicker(tokenResponse.access_token);
+                    }
                 });
+                tokenClient.requestAccessToken(); // Request access token
             }).catch((error) => {
                 console.error("Error initializing the client: ", error);
             });
         }
+
         // On Picker API load
         function onPickerApiLoad() {
             pickerApiLoaded = true;
         }
+
         // Create and show the picker
-        function createPicker() {
+        function createPicker(oauthToken) {
             if (pickerApiLoaded && oauthToken) {
                 let picker = new google.picker.PickerBuilder()
                     .addView(google.picker.ViewId.DOCS) // View for Google Docs and PDFs
@@ -60,6 +69,7 @@
                 picker.setVisible(true);
             }
         }
+
         // Handle the selected file
         function pickerCallback(data) {
             if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
@@ -70,6 +80,7 @@
                 pdfContainer.style.display = 'block';
             }
         }
+
         // Event listener for button click
         document.getElementById('pickFileButton').addEventListener('click', function() {
             loadApis(); // Load the APIs and trigger the picker
